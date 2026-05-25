@@ -2,8 +2,7 @@ FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y curl git
 
-RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-RUN mv /root/bin/arduino-cli /usr/local/bin/
+RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
 
 RUN arduino-cli config init
 RUN arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
