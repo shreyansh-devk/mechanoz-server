@@ -1,62 +1,64 @@
-# server.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import subprocess, tempfile, os, glob
+import subprocess, tempfile, os, base64
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/flash', methods=['POST'])
-def flash():
+@app.route('/', methods=['GET'])
+def index():
+    return jsonify({'service': 'MechanzO Compile Server', 'status': 'online', 'version': '1.0.0'})
+
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'service': 'MechanzO Compile Server', 'status': 'online'})
+
+@app.route('/compile', methods=['POST'])
+def compile_code():
     data = request.json
     code = data.get('code', '')
-    port = data.get('port', 'COM3')  # change to your port
 
-    # Write code to temp sketch
+    if not code.strip():
+        return jsonify({'success': False, 'error': 'No code provided'})
+
     with tempfile.TemporaryDirectory() as tmpdir:
         sketch_dir = os.path.join(tmpdir, 'sketch')
         os.makedirs(sketch_dir)
         sketch_path = os.path.join(sketch_dir, 'sketch.ino')
-        
+
         with open(sketch_path, 'w') as f:
             f.write(code)
 
-        # Compile
-        compile_result = subprocess.run([
+        result = subprocess.run([
             'arduino-cli', 'compile',
             '--fqbn', 'esp32:esp32:esp32s3',
+            '--output-dir', tmpdir,
             sketch_dir
-        ], capture_output=True, text=True)
+        ], capture_output=True, text=True, timeout=120)
 
-        if compile_result.returncode != 0:
+        if result.returncode != 0:
             return jsonify({
                 'success': False,
-                'error': compile_result.stderr
+                'error': result.stderr or result.stdout
             })
 
-        # Upload
-        upload_result = subprocess.run([
-            'arduino-cli', 'upload',
-            '--fqbn', 'esp32:esp32:esp32s3',
-            '--port', port,
-            sketch_dir
-        ], capture_output=True, text=True)
+        bin_file = None
+        for f in os.listdir(tmpdir):
+            if f.endswith('.bin') and 'bootloader' not in f and 'partitions' not in f:
+                bin_file = os.path.join(tmpdir, f)
+                break
 
-        if upload_result.returncode != 0:
-            return jsonify({
-                'success': False,
-                'error': upload_result.stderr
-            })
+        if not bin_file:
+            return jsonify({'success': False, 'error': 'Binary not found after compile'})
 
-        return jsonify({'success': True, 'message': 'Flashed successfully'})
+        with open(bin_file, 'rb') as f:
+            binary_data = f.read()
 
-@app.route('/ports', methods=['GET'])
-def get_ports():
-    result = subprocess.run(
-        ['arduino-cli', 'board', 'list'],
-        capture_output=True, text=True
-    )
-    return jsonify({'output': result.stdout})
+        return jsonify({
+            'success': True,
+            'binary': base64.b64encode(binary_data).decode('utf-8'),
+            'size': len(binary_data)
+        })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
