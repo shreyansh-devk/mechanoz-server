@@ -1,0 +1,50 @@
+name: Compile Arduino Sketch
+
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: 'Arduino sketch code'
+        required: true
+        type: string
+      callback_id:
+        description: 'Unique ID for this compile job'
+        required: true
+        type: string
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install arduino-cli
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
+
+      - name: Install ESP32 board
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Install libraries
+        run: |
+          arduino-cli lib install "Adafruit SSD1306" "Adafruit GFX Library" "Adafruit ADS1X15" "Adafruit BusIO"
+
+      - name: Write sketch
+        run: |
+          mkdir -p /tmp/sketch
+          cat << 'SKETCHEOF' > /tmp/sketch/sketch.ino
+          ${{ github.event.inputs.code }}
+          SKETCHEOF
+
+      - name: Compile
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32s3 --output-dir /tmp/output /tmp/sketch
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ github.event.inputs.callback_id }}
+          path: /tmp/output/*.bin
+          retention-days: 1
