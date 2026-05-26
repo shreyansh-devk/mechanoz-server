@@ -12,6 +12,6 @@ RUN arduino-cli lib install "Adafruit SSD1306" "Adafruit GFX Library" "Adafruit 
 
 WORKDIR /app
 COPY server.py .
-RUN pip install flask flask-cors
+RUN pip install flask flask-cors requests
 
 CMD ["python3", "server.py"]
