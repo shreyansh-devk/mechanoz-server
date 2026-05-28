@@ -64,7 +64,7 @@ def compile_code():
         
         if run_id:
             break
-        time.sleep(3)
+        time.sleep(2)
 
     if not run_id:
         return jsonify({'success': False, 'error': 'Workflow did not start'})
@@ -81,7 +81,7 @@ def compile_code():
             if run_data['conclusion'] != 'success':
                 return jsonify({'success': False, 'error': 'Compilation failed. Check your code.'})
             break
-        time.sleep(5)
+        time.sleep(3)
 
     # Download artifact
     artifacts_res = requests.get(
