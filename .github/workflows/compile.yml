@@ -14,14 +14,15 @@ jobs:
   compile:
     runs-on: ubuntu-latest
     steps:
-      - name: Cache arduino-cli and ESP32 core
+      - name: Cache arduino-cli, ESP32 core, and build cache
         id: cache-toolchain
         uses: actions/cache@v3
         with:
           path: |
             ~/.arduino15
             /usr/local/bin/arduino-cli
-          key: arduino-esp32-${{ runner.os }}-v1
+            /tmp/arduino-build-cache
+          key: arduino-esp32-${{ runner.os }}-v2
 
       - name: Install arduino-cli (if not cached)
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
@@ -48,7 +49,8 @@ jobs:
 
       - name: Compile
         run: |
-          arduino-cli compile --fqbn esp32:esp32:esp32s3 --output-dir /tmp/output /tmp/sketch
+          mkdir -p /tmp/arduino-build-cache
+          arduino-cli compile --fqbn esp32:esp32:esp32s3 --build-cache-path /tmp/arduino-build-cache --output-dir /tmp/output /tmp/sketch
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
