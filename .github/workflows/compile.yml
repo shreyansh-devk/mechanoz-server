@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Cache arduino-cli and ESP32 core
+        id: cache-toolchain
         uses: actions/cache@v3
         with:
           path: |
@@ -23,12 +24,14 @@ jobs:
           key: arduino-esp32-${{ runner.os }}-v1
 
       - name: Install arduino-cli (if not cached)
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           if ! command -v arduino-cli &> /dev/null; then
             curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
           fi
 
       - name: Install ESP32 core and libraries (if not cached)
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           arduino-cli config init --overwrite
           arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
