@@ -22,36 +22,38 @@ jobs:
             ~/.arduino15
             /usr/local/bin/arduino-cli
             /tmp/arduino-build-cache
-          key: arduino-esp32-${{ runner.os }}-v2
-
+          key: arduino-esp32-${{ runner.os }}-v3
       - name: Install arduino-cli (if not cached)
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           if ! command -v arduino-cli &> /dev/null; then
             curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
           fi
-
-      - name: Install ESP32 core and libraries (if not cached)
+      - name: Install ESP32 core (if not cached)
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           arduino-cli config init --overwrite
           arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
-          arduino-cli lib install "Adafruit SSD1306" "Adafruit GFX Library" "Adafruit ADS1X15" "Adafruit BusIO"
-
+      - name: Install libraries (always runs)
+        run: |
+          arduino-cli lib install "Adafruit SSD1306"
+          arduino-cli lib install "Adafruit GFX Library"
+          arduino-cli lib install "Adafruit ADS1X15"
+          arduino-cli lib install "Adafruit BusIO"
+          arduino-cli lib install "LiquidCrystal I2C"
+          arduino-cli lib install "Adafruit PWM Servo Driver Library"
       - name: Write sketch
         run: |
           mkdir -p /tmp/sketch
           cat << 'SKETCHEOF' > /tmp/sketch/sketch.ino
           ${{ github.event.inputs.code }}
           SKETCHEOF
-
       - name: Compile
         run: |
           mkdir -p /tmp/arduino-build-cache
           arduino-cli compile --fqbn esp32:esp32:esp32s3 --build-cache-path /tmp/arduino-build-cache --output-dir /tmp/output /tmp/sketch
-
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
